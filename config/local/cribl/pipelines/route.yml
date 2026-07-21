@@ -1,0 +1,9 @@
+# Single catch-all route: everything -> passthru -> devnull. Deployment
+# config overlays real routes via the /opt/cribl-seed/ mount.
+routes:
+  - id: default
+    name: default
+    filter: "true"
+    pipeline: passthru
+    output: devnull_out
+    final: true

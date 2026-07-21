@@ -1,0 +1,35 @@
+# ============================================================================
+# Cribl Stream AGGREGATOR inputs (standalone node, file-config under
+# $CRIBL_HOME/local/cribl/ — Stream reads the `cribl` config group).
+# Sanitized from the devstack cribl-agg tree (agent-tiering-validation).
+#
+#   :8080 HTTP Raw — NDJSON in. Breaker ruleset id `Cribl` is the built-in
+#          NDJSON breaker (LIVE-VERIFIED 4.18.2: the UI label "JSON Newline
+#          Delimited" is REJECTED) — without it the whole line stays in _raw.
+#   :4318 OpenTelemetry — OTLP/HTTP; extracts logs and metrics.
+# ============================================================================
+inputs:
+  http_in:
+    type: http_raw
+    disabled: false
+    sendToRoutes: true
+    host: 0.0.0.0
+    port: 8080
+    tls:
+      disabled: true
+    breakerRulesets:
+      - "Cribl"
+
+  otlp_in:
+    type: open_telemetry
+    disabled: false
+    sendToRoutes: true
+    host: 0.0.0.0
+    port: 4318
+    protocol: http
+    otlpVersion: "1.3.1"
+    extractLogs: true
+    extractMetrics: true
+    extractSpans: false
+    tls:
+      disabled: true

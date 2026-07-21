@@ -1,0 +1,4 @@
+# Minimal passthrough — no functions. Deliberately free of MD5/CRC-32
+# expressions (silent no-ops under FIPS mode).
+functions: []
+groups: {}

@@ -1,0 +1,62 @@
+# Local bring-up for the Cribl Stream aggregator image.
+#
+#   make run                          -> dev profile: single instance, FIPS off
+#                                        (Cribl >= 4.7 refuses FIPS in single
+#                                        mode; see docs/fips-notes.md)
+#   CRIBL_LICENSE=... docker compose --profile fips up -d
+#                                     -> FIPS leader + worker (requires an
+#                                        RBAC-entitled Enterprise/trial license)
+#
+# UI/API :9000, http_raw NDJSON :8080, OTLP/HTTP :4318
+services:
+  aggregator-dev:
+    profiles: [dev]
+
+    image: ${IMAGE:-ghcr.io/snk5125/cribl-fips}:${VERSION:-latest}
+    environment:
+      CRIBL_FIPS: "0"
+      # FIPS complexity rules still checked: >=8 chars, >=3 character classes
+      # CRIBL_ADMIN_PASSWORD: ${CRIBL_ADMIN_PASSWORD}
+    ports:
+      - "9000:9000"   # UI / API
+      - "8080:8080"   # http_raw NDJSON in
+      - "4318:4318"   # OTLP HTTP in
+    # Overlay real outputs/routes over the baked devnull defaults:
+    # volumes:
+    #   - ./my-deploy-config:/opt/cribl-seed:ro
+    healthcheck: &cribl_health
+      test: ["CMD", "curl", "-fsS", "http://localhost:9000/api/v1/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 90s   # cribl first boot is slow (state dirs + workers)
+
+  cribl-leader:
+    profiles: [fips]
+
+    image: ${IMAGE:-ghcr.io/snk5125/cribl-fips}:${VERSION:-latest}
+    environment:
+      CRIBL_FIPS: "1"
+      CRIBL_DIST_MODE: master
+      # RBAC-entitled Enterprise/trial license — without it, Cribl refuses
+      # FIPS at boot (the entrypoint warns first)
+      CRIBL_LICENSE: ${CRIBL_LICENSE:-}
+      CRIBL_ADMIN_PASSWORD: ${CRIBL_ADMIN_PASSWORD:-}
+    ports:
+      - "9000:9000"   # UI / API
+    healthcheck: *cribl_health
+
+  cribl-worker:
+    profiles: [fips]
+
+    image: ${IMAGE:-ghcr.io/snk5125/cribl-fips}:${VERSION:-latest}
+    environment:
+      CRIBL_FIPS: "1"
+      CRIBL_DIST_MODE: worker
+      CRIBL_DIST_MASTER_URL: tcp://criblmaster@cribl-leader:4200
+    ports:
+      - "8080:8080"   # http_raw NDJSON in (data plane lives on workers)
+      - "4318:4318"   # OTLP HTTP in
+    depends_on:
+      cribl-leader:
+        condition: service_healthy

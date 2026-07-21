@@ -1,0 +1,8 @@
+# Default output is devnull so the baked image boots healthy with zero
+# external dependencies. Real destinations (S3, OTLP, ...) are deployment
+# config: mount a tree at /opt/cribl-seed/ to overlay this one (see README).
+# FIPS note: avoid MD5/CRC-32 anywhere downstream — they fail silently in
+# FIPS mode, and AWS SDK v2 based destinations skip checksums.
+outputs:
+  devnull_out:
+    type: devnull
