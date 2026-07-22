@@ -14,7 +14,9 @@ if command -v docker >/dev/null 2>&1; then
   # repos; the base image itself is digest-pinned.
   # DL3010: ADD-extraction is deliberately avoided — ADD --chown does not
   # apply ownership to extracted archives on the Docker versions in play.
-  docker run --rm -i "$HADOLINT_IMAGE" hadolint --ignore DL3041 --ignore DL3010 - < Containerfile || rc=1
+  for cf in Containerfile Containerfile.base; do
+    docker run --rm -i "$HADOLINT_IMAGE" hadolint --ignore DL3041 --ignore DL3010 - < "$cf" || rc=1
+  done
 else
   echo "WARN: docker unavailable — skipping hadolint" >&2
 fi

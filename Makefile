@@ -30,6 +30,10 @@ validate: build
 scan: build
 	./ci/scan.sh $(IMAGE):$(VERSION)
 
+# patched UBI9 base (published on its own cadence by .github/workflows/base.yml)
+base:
+	ARCH=$(ARCH) ./ci/build-base.sh
+
 status:
 	@docker image ls "$(IMAGE)" 2>/dev/null || true
 

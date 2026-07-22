@@ -40,6 +40,31 @@ build-validate:
     key: vendor-cribl
     paths: [build/vendor/]
 
+# Patched-base refresh (GitLab side): build + scan + publish only. The
+# Containerfile digest pin is managed by the GitHub base workflow — this job
+# keeps a registry-local copy for GitLab-hosted deployments.
+# Trigger via a pipeline schedule or by setting BASE_REFRESH=1.
+base:
+  extends: .docker
+  stage: validate
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+    - if: $BASE_REFRESH == "1"
+  script:
+    - apk add --no-cache bash git
+    - datetag=$(date -u +%Y-%m-%d)
+    - ARCH=amd64 BASE_IMAGE_REPO="$CI_REGISTRY_IMAGE/ubi9-patched" ./ci/build-base.sh "$datetag"
+    - ./ci/scan.sh "$CI_REGISTRY_IMAGE/ubi9-patched:$datetag"
+    - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" "$CI_REGISTRY"
+    - docker push "$CI_REGISTRY_IMAGE/ubi9-patched:$datetag"
+    - docker push "$CI_REGISTRY_IMAGE/ubi9-patched:latest"
+  artifacts:
+    when: always
+    paths:
+      - build/scan/trivy.sarif
+      - build/scan/trivy.json
+    expire_in: 90 days
+
 scan:
   extends: .docker
   stage: validate

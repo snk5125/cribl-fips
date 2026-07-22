@@ -1,0 +1,15 @@
+# Patched UBI9 base for the aggregator-fips image.
+# Built on its own cadence (weekly cron + on demand) so CVE patching is
+# decoupled from app builds: upgrade to Red Hat's latest el9 backports, add
+# the packages the Cribl image needs, scan (ci/scan.sh gates fixable
+# HIGH/CRITICAL), then publish as ubi9-patched:<date> (+ :latest).
+# The Cribl Containerfile consumes a digest-pinned reference to this image.
+FROM registry.access.redhat.com/ubi9/ubi-minimal:9.5@sha256:a50731d3397a4ee28583f1699842183d4d24fadcc565c4688487af9ee4e13a44
+
+# openssl: CLI for provider asserts; tar/gzip: tarball extract; shadow-utils:
+# user mgmt; findutils: cribl scripts; git: Stream config versioning.
+# (curl-minimal is already in the base — the app HEALTHCHECK relies on it.)
+RUN microdnf upgrade -y \
+ && microdnf install -y openssl tar gzip shadow-utils findutils git \
+ && microdnf clean all \
+ && command -v curl
