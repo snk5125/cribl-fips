@@ -119,4 +119,5 @@ ci/                    fetch-cribl / build / lint / validate / scan / push
 .github/workflows/     GitHub CI (thin, calls ci/*.sh)
 .gitlab-ci.yml         GitLab CI (same scripts)
 docs/fips-notes.md     live-verified findings: RBAC gate, password rules, caveats
+docs/packages.md       per-package justification table (present AND absent)
 ```

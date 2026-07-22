@@ -11,12 +11,12 @@
 # published pin is amd64).
 ARG BASE_IMAGE=ghcr.io/snk5125/cribl-fips/ubi9-patched:2026-07-22@sha256:db8c4710d534c5748961e0b74e2e11c708d37f24e8a90257e22acd0c8566a10b
 
-# --- unpack stage: tar/gzip live only here, never in the runtime image ---
+# --- unpack stage: keeps the 85MB vendor tarball blob out of the shipped
+# image's layer history (tar itself is in the base — see docs/packages.md) ---
 FROM ${BASE_IMAGE} AS unpack
 ARG CRIBL_VERSION=4.18.2
 ARG CRIBL_BUILD=fd1f0d2f
 ARG CRIBL_ARCH=x64
-RUN microdnf install -y tar gzip && microdnf clean all
 # COPY + tar rather than ADD: ADD --chown does not apply ownership to
 # extracted archive contents on the Docker versions in play (verified:
 # EACCES on /opt/cribl/log), and the cribl user (1000) must own the tree.
