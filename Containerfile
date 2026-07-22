@@ -13,7 +13,10 @@ ARG CRIBL_ARCH=x64
 # openssl: CLI for provider asserts; tar/gzip: extract; shadow-utils: user
 # mgmt; findutils: cribl scripts; git: Stream config versioning.
 # (curl-minimal is already in the base — the HEALTHCHECK relies on it.)
-RUN microdnf install -y openssl tar gzip shadow-utils findutils git \
+# upgrade first: the digest-pinned base lags Red Hat's CVE backports
+# (verified by trivy: libxml2/sqlite-libs HIGHs fixed in newer el9 builds)
+RUN microdnf upgrade -y \
+ && microdnf install -y openssl tar gzip shadow-utils findutils git \
  && microdnf clean all \
  && command -v curl
 

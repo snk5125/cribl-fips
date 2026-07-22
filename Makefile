@@ -4,7 +4,7 @@ VERSION ?= sha-$(shell git rev-parse --short HEAD 2>/dev/null || echo dev)
 IMAGE   ?= ghcr.io/snk5125/cribl-fips
 ARCH    ?= $(shell uname -m | sed -e 's/x86_64/amd64/' -e 's/aarch64/arm64/')
 
-.PHONY: setup lint test generate build validate status package push run clean
+.PHONY: setup lint test generate build validate scan status package push run clean
 
 setup:
 	@command -v docker >/dev/null || { echo "docker is required" >&2; exit 1; }
@@ -25,6 +25,10 @@ test: validate
 
 validate: build
 	./ci/validate.sh $(IMAGE):$(VERSION)
+
+# trivy: SARIF/JSON reports + gate on fixable HIGH/CRITICAL
+scan: build
+	./ci/scan.sh $(IMAGE):$(VERSION)
 
 status:
 	@docker image ls "$(IMAGE)" 2>/dev/null || true

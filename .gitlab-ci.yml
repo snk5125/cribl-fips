@@ -40,10 +40,30 @@ build-validate:
     key: vendor-cribl
     paths: [build/vendor/]
 
+scan:
+  extends: .docker
+  stage: validate
+  needs: [build-validate]
+  script:
+    - apk add --no-cache bash git
+    - version="${CI_COMMIT_TAG:-sha-$CI_COMMIT_SHORT_SHA}"
+    # dind is a fresh daemon per job: rebuild (cache-hot via vendor cache)
+    - ARCH=amd64 IMAGE="$CI_REGISTRY_IMAGE" ./ci/build.sh "$version"
+    - ./ci/scan.sh "$CI_REGISTRY_IMAGE:$version"
+  cache:
+    key: vendor-cribl
+    paths: [build/vendor/]
+  artifacts:
+    when: always
+    paths:
+      - build/scan/trivy.sarif
+      - build/scan/trivy.json
+    expire_in: 90 days
+
 publish:
   extends: .docker
   stage: publish
-  needs: [build-validate]
+  needs: [build-validate, scan]
   rules:
     - if: $CI_COMMIT_TAG
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH

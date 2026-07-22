@@ -18,6 +18,7 @@ Cribl configuration; this image bakes both.
 ```bash
 make build         # fetch pinned tarball + docker build (host arch)
 make validate      # boot + FIPS assertions (fail-closed, provider, functional)
+make scan          # trivy vuln scan; gate on fixable HIGH/CRITICAL
 make run           # dev profile: single instance, FIPS OFF -> localhost:9000
 
 # FIPS-enabled stack (leader + worker; needs an RBAC-entitled license):
@@ -97,7 +98,7 @@ Details and evidence in [docs/fips-notes.md](docs/fips-notes.md). Headlines:
 Containerfile          UBI9-minimal + cribl tarball + FIPS wiring & build gates
 docker/entrypoint.sh   fail-closed FIPS policy, license/seed/password bootstrap
 config/local/cribl/    baked default config (dependency-free boot)
-ci/                    fetch-cribl / build / lint / validate / push
+ci/                    fetch-cribl / build / lint / validate / scan / push
 .github/workflows/     GitHub CI (thin, calls ci/*.sh)
 .gitlab-ci.yml         GitLab CI (same scripts)
 docs/fips-notes.md     live-verified findings: RBAC gate, password rules, caveats
