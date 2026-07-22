@@ -102,6 +102,11 @@ Details and evidence in [docs/fips-notes.md](docs/fips-notes.md). Headlines:
 - The licensed FIPS-positive path (`running with FIPS enabled`) is asserted
   by `ci/validate.sh` only when `CRIBL_LICENSE` is set — it has not been
   exercised without one (the free license reports `rbac: 0`).
+- **Vulnerability reporting split**: GitHub Code Scanning alerts show
+  *fixable* findings only (every alert is actionable); the full inventory
+  including unfixed CVEs awaiting Red Hat backports is the `trivy.json`
+  artifact on every run. Accepted-risk suppressions are PR-reviewed OpenVEX
+  statements in [vex/](vex/README.md), never UI dismissals.
 
 ## Layout
 

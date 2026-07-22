@@ -6,10 +6,15 @@
 # The Cribl Containerfile consumes a digest-pinned reference to this image.
 FROM registry.access.redhat.com/ubi9/ubi-minimal:9.5@sha256:a50731d3397a4ee28583f1699842183d4d24fadcc565c4688487af9ee4e13a44
 
-# openssl: CLI for provider asserts; tar/gzip: tarball extract; shadow-utils:
-# user mgmt; findutils: cribl scripts; git: Stream config versioning.
+# openssl: CLI for provider asserts; shadow-utils: user mgmt; findutils:
+# cribl scripts; git-core: Stream config versioning — git-core rather than
+# git (drops the perl-Git stack) and weak deps suppressed, minimizing CVE
+# surface (openssh-clients remains: it is a HARD dep of git-core in el9).
+# tar is NOT here: the app extracts its tarball in a throwaway build stage,
+# so it never ships in the runtime image (gzip survives as a hard dep of
+# cracklib via the shadow-utils/pam chain).
 # (curl-minimal is already in the base — the app HEALTHCHECK relies on it.)
 RUN microdnf upgrade -y \
- && microdnf install -y openssl tar gzip shadow-utils findutils git \
+ && microdnf install -y --setopt=install_weak_deps=0 openssl shadow-utils findutils git-core \
  && microdnf clean all \
  && command -v curl

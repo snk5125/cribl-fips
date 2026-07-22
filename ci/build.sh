@@ -35,7 +35,7 @@ revision="$(git rev-parse HEAD 2>/dev/null || echo unknown)"
 docker build -f Containerfile \
   --platform "linux/$ARCH" \
   --build-arg CRIBL_ARCH="$cribl_arch" \
-  "${base_args[@]}" \
+  ${base_args[@]+"${base_args[@]}"} \
   --label "org.opencontainers.image.title=aggregator-fips" \
   --label "org.opencontainers.image.description=FIPS-mode Cribl Stream aggregator (UBI9 + validated OpenSSL FIPS provider)" \
   --label "org.opencontainers.image.version=$version" \

@@ -10,24 +10,29 @@
 # arm64 dev builds, overrides BASE_IMAGE with a locally-built base (the
 # published pin is amd64).
 ARG BASE_IMAGE=ghcr.io/snk5125/cribl-fips/ubi9-patched:2026-07-22@sha256:f3285ad944b2c31875c318c2b638a572de54d0f69ab512dd497eddd5b86e31bf
-FROM ${BASE_IMAGE}
 
+# --- unpack stage: tar/gzip live only here, never in the runtime image ---
+FROM ${BASE_IMAGE} AS unpack
 ARG CRIBL_VERSION=4.18.2
 ARG CRIBL_BUILD=fd1f0d2f
 ARG CRIBL_ARCH=x64
+RUN microdnf install -y tar gzip && microdnf clean all
+# COPY + tar rather than ADD: ADD --chown does not apply ownership to
+# extracted archive contents on the Docker versions in play (verified:
+# EACCES on /opt/cribl/log), and the cribl user (1000) must own the tree.
+COPY build/vendor/cribl-${CRIBL_VERSION}-${CRIBL_BUILD}-linux-${CRIBL_ARCH}.tgz /tmp/cribl.tgz
+RUN tar -xzf /tmp/cribl.tgz -C /opt \
+ && chown -R 1000:1000 /opt/cribl
+
+# --- runtime stage ---
+FROM ${BASE_IMAGE}
 
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
 RUN groupadd -g 1000 cribl \
  && useradd -u 1000 -g cribl -d /opt/cribl -M -s /sbin/nologin cribl
 
-# COPY + tar rather than ADD: ADD --chown does not apply ownership to
-# extracted archive contents on the Docker versions in play (verified:
-# EACCES on /opt/cribl/log), and the cribl user must own the tree.
-COPY build/vendor/cribl-${CRIBL_VERSION}-${CRIBL_BUILD}-linux-${CRIBL_ARCH}.tgz /tmp/cribl.tgz
-RUN tar -xzf /tmp/cribl.tgz -C /opt \
- && rm /tmp/cribl.tgz \
- && chown -R cribl:cribl /opt/cribl
+COPY --from=unpack --chown=1000:1000 /opt/cribl /opt/cribl
 
 COPY --chown=cribl:cribl config/local/cribl/ /opt/cribl/local/cribl/
 COPY docker/entrypoint.sh /entrypoint.sh
