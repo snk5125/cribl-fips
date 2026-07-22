@@ -92,15 +92,22 @@ if ! wait_health "$c3" "$BOOT_WAIT"; then
   fail "health probe (non-FIPS single) — last 40 log lines:"
   docker logs "$c3" 2>&1 | tail -40 >&2
 else
-  # --- 2. OpenSSL provider (exec env carries the image's OPENSSL_CONF) ---
+  # --- 2. OpenSSL provider (exec env carries the image's OPENSSL_CONF).
+  #     Exact-match against the CMVP provenance label baked by the base
+  #     (io.grimoire.fips.*) so certificate traceability is asserted, not
+  #     assumed — plus Cribl's >= 3.0.5 floor.
   pv="$(docker exec "$c3" sh -c \
         "openssl list -providers 2>/dev/null | grep -A2 '^  fips' | awk '/version:/ {print \$2}'" || true)"
+  pinned_pv="$(docker inspect -f '{{index .Config.Labels "io.grimoire.fips.provider.module-version"}}' "$image" 2>/dev/null || true)"
+  cert="$(docker inspect -f '{{index .Config.Labels "io.grimoire.fips.cmvp.certificate"}}' "$image" 2>/dev/null || true)"
   if [ -z "$pv" ]; then
     fail "openssl fips provider not active at image level"
+  elif [ -n "$pinned_pv" ] && [ "$pv" != "$pinned_pv" ]; then
+    fail "active fips provider $pv != pinned $pinned_pv — CMVP cert #$cert traceability broken"
   elif [ "$(printf '3.0.5\n%s\n' "${pv%%-*}" | sort -V | head -1)" != "3.0.5" ]; then
     fail "fips provider version $pv < 3.0.5 (Cribl minimum)"
   else
-    echo "   OK: fips provider $pv"
+    echo "   OK: fips provider $pv (pinned; CMVP cert #${cert:-unlabeled})"
   fi
   docker exec "$c3" sh -c 'test -f /opt/cribl/state/nodejs.cnf && grep -q fips_local.cnf /opt/cribl/state/nodejs.cnf' \
     || fail "state/nodejs.cnf missing or not referencing fips_local.cnf"

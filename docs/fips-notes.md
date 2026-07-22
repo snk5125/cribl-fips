@@ -65,10 +65,28 @@ credentials are `admin/admin` with a forced change).
   run with `fips=1` (kernel crypto self-tests, system-wide policy). This
   image activates the validated provider regardless of host state, but for a
   real compliance boundary run it on a FIPS-mode host (RHEL 9 or equivalent).
-- **Provider certificate lineage:** the active module identifies itself as
-  Red Hat's RHEL 9 FIPS provider (3.0.7 stream), the one covered by Red
-  Hat's CMVP certificates. Record the exact certificate number for your
-  package version at audit time (`rpm -q openssl-libs` in the container).
+- **Provider certificate lineage** (traceability implemented 2026-07-22,
+  technique inspired by Cribl's Iron Bank image, which pins upstream OpenSSL
+  3.1.2 / CMVP cert #4985): Red Hat ships the validated module as the frozen
+  `openssl-fips-provider-so` package, decoupled from the routinely-patched
+  `openssl-libs`. **NIST CMVP certificate #4857** covers module
+  `3.0.7-395c1a240fbfffd8` (package `openssl-fips-provider-3.0.7-6.el9`,
+  RHEL 9.4–9.8 per Red Hat's [compliance matrix](https://access.redhat.com/compliance/fips)).
+  Our image ships the `-11.el9_8` rebuild (module
+  `3.0.7-cda111b5812c30d4`): Red Hat rebuilt the certified module in June
+  2026 to fix **CVE-2026-31790 in the provider itself**, and UBI repos carry
+  only the patched build — certificate applies by lineage while
+  revalidation is in process. We chose the patched build deliberately:
+  shipping the certificate-exact binary would mean shipping a known CVE
+  (and it isn't installable from UBI anyway). The tradeoff is documented,
+  pinned, and enforced:
+  - `Containerfile.base` asserts the exact provider package NVR and module
+    version at build — a Red Hat provider bump fails the weekly base build
+    until someone reviews certificate status and updates the pins.
+  - Provenance is stamped as image labels (`io.grimoire.fips.cmvp.*`,
+    `io.grimoire.fips.provider.*`) inherited by the app image.
+  - `ci/validate.sh` asserts the *runtime-active* provider version matches
+    the pinned label exactly.
 - **MD5 / CRC-32** expressions fail **silently** in FIPS mode — audit
   pipelines before deploying (the baked passthrough pipeline is clean).
 - **AWS SDK v2**-based sources/destinations skip checksums in FIPS mode.
