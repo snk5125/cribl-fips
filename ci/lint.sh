@@ -14,8 +14,11 @@ if command -v docker >/dev/null 2>&1; then
   # repos; the base image itself is digest-pinned.
   # DL3010: ADD-extraction is deliberately avoided — ADD --chown does not
   # apply ownership to extracted archives on the Docker versions in play.
+  # DL3006: FROM ${BASE_IMAGE} — hadolint can't see that the ARG default is
+  # a fully digest-pinned reference (maintained by workflows/base.yml).
   for cf in Containerfile Containerfile.base; do
-    docker run --rm -i "$HADOLINT_IMAGE" hadolint --ignore DL3041 --ignore DL3010 - < "$cf" || rc=1
+    docker run --rm -i "$HADOLINT_IMAGE" hadolint \
+      --ignore DL3041 --ignore DL3010 --ignore DL3006 - < "$cf" || rc=1
   done
 else
   echo "WARN: docker unavailable — skipping hadolint" >&2

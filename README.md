@@ -48,10 +48,21 @@ leader); `CRIBL_ADMIN_PASSWORD` (applied via the users API after boot;
 complexity-checked up front — >= 8 chars, >= 3 classes, uppercase not
 counting the first character, digits not counting the last).
 
+## Patched-base pipeline
+
+The app image builds `FROM` a pre-patched base, `ubi9-patched`
+([Containerfile.base](Containerfile.base)): UBI9-minimal + Red Hat's latest
+el9 CVE backports + the package set. The [base workflow](.github/workflows/base.yml)
+rebuilds it weekly (and on dispatch): build → trivy scan gate → publish
+`ubi9-patched:<date>` → bump the digest pin in the Containerfile → rebuild,
+validate, scan, and push the app against it — so CVE patching runs on Red
+Hat's cadence, not yours. arm64 dev builds self-build an equivalent local
+base (`make base`); the published pin is amd64.
+
 ## How FIPS is wired
 
-- Base `ubi9/ubi-minimal` (digest-pinned) ships Red Hat's separately-packaged
-  FIPS provider `/usr/lib64/ossl-modules/fips.so` — active version
+- The base ships Red Hat's separately-packaged FIPS provider
+  `/usr/lib64/ossl-modules/fips.so` — active version
   `3.0.7-cda111b5812c30d4`, the CMVP-validated RHEL 9 module, above Cribl's
   >= 3.0.5 floor.
 - At build: `cribl generateFipsConf -d /etc/pki/tls` writes
@@ -95,7 +106,8 @@ Details and evidence in [docs/fips-notes.md](docs/fips-notes.md). Headlines:
 ## Layout
 
 ```
-Containerfile          UBI9-minimal + cribl tarball + FIPS wiring & build gates
+Containerfile          ubi9-patched base + cribl tarball + FIPS wiring & gates
+Containerfile.base     UBI9-minimal + el9 CVE backports (weekly, digest-pinned)
 docker/entrypoint.sh   fail-closed FIPS policy, license/seed/password bootstrap
 config/local/cribl/    baked default config (dependency-free boot)
 ci/                    fetch-cribl / build / lint / validate / scan / push

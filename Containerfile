@@ -1,24 +1,20 @@
 # FIPS-mode Cribl Stream aggregator (single instance).
-# Base: UBI9-minimal — ships OpenSSL 3 with Red Hat's CMVP-validated FIPS
-# provider (/usr/lib64/ossl-modules/fips.so), satisfying Cribl's requirement
-# of a FIPS provider >= 3.0.5 (Cribl >= 4.8.2).
+# Base: ubi9-patched (Containerfile.base) — UBI9-minimal + latest el9 CVE
+# backports + package set, built/scanned/published on its own cadence by
+# .github/workflows/base.yml, which also maintains this digest pin. It ships
+# OpenSSL 3 with Red Hat's CMVP-validated FIPS provider
+# (/usr/lib64/ossl-modules/fips.so), satisfying Cribl's requirement of a
+# FIPS provider >= 3.0.5 (Cribl >= 4.8.2).
 # Cribl is installed from the official tarball, sha256-pinned by
-# ci/fetch-cribl.sh; ci/build.sh supplies CRIBL_ARCH (x64|arm64).
-FROM registry.access.redhat.com/ubi9/ubi-minimal:9.5@sha256:a50731d3397a4ee28583f1699842183d4d24fadcc565c4688487af9ee4e13a44
+# ci/fetch-cribl.sh; ci/build.sh supplies CRIBL_ARCH (x64|arm64) and, for
+# arm64 dev builds, overrides BASE_IMAGE with a locally-built base (the
+# published pin is amd64).
+ARG BASE_IMAGE=ghcr.io/snk5125/cribl-fips/ubi9-patched:2026-07-22@sha256:f3285ad944b2c31875c318c2b638a572de54d0f69ab512dd497eddd5b86e31bf
+FROM ${BASE_IMAGE}
 
 ARG CRIBL_VERSION=4.18.2
 ARG CRIBL_BUILD=fd1f0d2f
 ARG CRIBL_ARCH=x64
-
-# openssl: CLI for provider asserts; tar/gzip: extract; shadow-utils: user
-# mgmt; findutils: cribl scripts; git: Stream config versioning.
-# (curl-minimal is already in the base — the HEALTHCHECK relies on it.)
-# upgrade first: the digest-pinned base lags Red Hat's CVE backports
-# (verified by trivy: libxml2/sqlite-libs HIGHs fixed in newer el9 builds)
-RUN microdnf upgrade -y \
- && microdnf install -y openssl tar gzip shadow-utils findutils git \
- && microdnf clean all \
- && command -v curl
 
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
