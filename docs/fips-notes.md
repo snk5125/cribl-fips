@@ -87,9 +87,9 @@ credentials are `admin/admin` with a forced change).
     `io.grimoire.fips.provider.*`) inherited by the app image.
   - `ci/validate.sh` asserts the *runtime-active* provider version matches
     the pinned label exactly.
-- **MD5 / CRC-32** expressions fail **silently** in FIPS mode — audit
-  pipelines before deploying (the baked passthrough pipeline is clean).
-- **AWS SDK v2**-based sources/destinations skip checksums in FIPS mode.
+- **Feature impact**: MD5/CRC-32 silent failures, the AWS SDK v2
+  checksum-skip list, and the RBAC-disable-silently-disables-FIPS behavior
+  are catalogued in [fips-feature-impact.md](fips-feature-impact.md).
 - The baked config tree applies to single/standalone mode. In distributed
   mode (the only FIPS-capable topology), worker-group config is managed by
   the leader (UI/GitOps), not by this image's baked tree.

@@ -97,8 +97,10 @@ Details and evidence in [docs/fips-notes.md](docs/fips-notes.md). Headlines:
 - **Host kernel**: formal FIPS 140-3 posture requires the *host* to run with
   `fips=1`; the image activates the validated provider regardless, but the
   host is part of any real compliance boundary.
-- **MD5 / CRC-32** expressions fail silently in FIPS mode; AWS SDK v2-based
-  sources/destinations skip checksums.
+- **MD5 / CRC-32** expressions fail silently in FIPS mode (including
+  `C.Mask.md5()` — a DLP pipeline masking with MD5 passes raw values
+  through); AWS SDK v2-based sources/destinations skip checksums. Full
+  feature-impact list: [docs/fips-feature-impact.md](docs/fips-feature-impact.md).
 - The licensed FIPS-positive path (`running with FIPS enabled`) is asserted
   by `ci/validate.sh` only when `CRIBL_LICENSE` is set — it has not been
   exercised without one (the free license reports `rbac: 0`).
@@ -119,5 +121,6 @@ ci/                    fetch-cribl / build / lint / validate / scan / push
 .github/workflows/     GitHub CI (thin, calls ci/*.sh)
 .gitlab-ci.yml         GitLab CI (same scripts)
 docs/fips-notes.md     live-verified findings: RBAC gate, password rules, caveats
+docs/fips-feature-impact.md  what Cribl loses in FIPS mode (silent failures first)
 docs/packages.md       per-package justification table (present AND absent)
 ```
