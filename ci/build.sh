@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Build the aggregator-fips image with OCI labels.
+# Build the cribl-fips image with OCI labels.
 # Usage: build.sh [version]        (default: sha-<short-sha>)
 # Env:   IMAGE (registry/name), ARCH (amd64|arm64, default amd64)
 set -euo pipefail
@@ -36,12 +36,12 @@ docker build -f Containerfile \
   --platform "linux/$ARCH" \
   --build-arg CRIBL_ARCH="$cribl_arch" \
   ${base_args[@]+"${base_args[@]}"} \
-  --label "org.opencontainers.image.title=aggregator-fips" \
+  --label "org.opencontainers.image.title=cribl-fips" \
   --label "org.opencontainers.image.description=FIPS-mode Cribl Stream aggregator (UBI9 + validated OpenSSL FIPS provider)" \
   --label "org.opencontainers.image.version=$version" \
   --label "org.opencontainers.image.revision=$revision" \
   --label "org.opencontainers.image.source=https://github.com/snk5125/cribl-fips" \
-  --label "io.grimoire.component=aggregator-fips" \
+  --label "io.grimoire.component=cribl-fips" \
   --label "io.grimoire.cribl.version=4.18.2" \
   -t "$IMAGE:$version" -t "$IMAGE:latest" .
 

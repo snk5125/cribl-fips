@@ -1,5 +1,5 @@
 # ============================================================================
-# aggregator-fips pipeline: lint -> validate -> publish
+# cribl-fips pipeline: lint -> validate -> publish
 # Every job body is a ci/*.sh script — the runner is thin and the whole
 # pipeline reproduces locally with `make lint build validate`.
 # ============================================================================

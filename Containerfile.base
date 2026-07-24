@@ -1,4 +1,4 @@
-# Patched UBI9 base for the aggregator-fips image.
+# Patched UBI9 base for the cribl-fips image.
 # Built on its own cadence (weekly cron + on demand) so CVE patching is
 # decoupled from app builds: upgrade to Red Hat's latest el9 backports, add
 # the packages the Cribl image needs, scan (ci/scan.sh gates fixable

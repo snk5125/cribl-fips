@@ -1,4 +1,4 @@
-# aggregator-fips
+# cribl-fips
 
 FIPS-mode **Cribl Stream** aggregator container image: Red Hat UBI9-minimal
 (CMVP-validated OpenSSL FIPS provider) + the official Cribl 4.18.2 tarball

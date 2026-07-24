@@ -9,7 +9,7 @@
 #
 # UI/API :9000, http_raw NDJSON :8080, OTLP/HTTP :4318
 services:
-  aggregator-dev:
+  cribl-dev:
     profiles: [dev]
 
     image: ${IMAGE:-ghcr.io/snk5125/cribl-fips}:${VERSION:-latest}

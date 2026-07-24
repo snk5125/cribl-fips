@@ -16,7 +16,7 @@ docker build -f Containerfile.base \
   --platform "linux/$ARCH" \
   --pull \
   --label "org.opencontainers.image.title=ubi9-patched" \
-  --label "org.opencontainers.image.description=UBI9-minimal with latest el9 CVE backports + aggregator-fips package set" \
+  --label "org.opencontainers.image.description=UBI9-minimal with latest el9 CVE backports + cribl-fips package set" \
   --label "org.opencontainers.image.version=$datetag" \
   --label "org.opencontainers.image.revision=$revision" \
   --label "org.opencontainers.image.source=https://github.com/snk5125/cribl-fips" \
