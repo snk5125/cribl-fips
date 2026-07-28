@@ -39,11 +39,17 @@ trap cleanup EXIT
 
 # Marker config tree served over git file:// (mounted read-only) — proves the
 # fetch + overlay path end-to-end without network infrastructure.
-mkdir -p "$cfgrepo/pipelines/remote_marker"
-printf 'functions: []\ngroups: {}\n' > "$cfgrepo/pipelines/remote_marker/conf.yml"
-git -C "$cfgrepo" init -q -b main
-git -C "$cfgrepo" -c user.name=validate -c user.email=validate@local add -A
-git -C "$cfgrepo" -c user.name=validate -c user.email=validate@local commit -qm marker
+mkdir -p "$cfgrepo/repo/pipelines/remote_marker"
+printf 'functions: []\ngroups: {}\n' > "$cfgrepo/repo/pipelines/remote_marker/conf.yml"
+git -C "$cfgrepo/repo" init -q -b main
+git -C "$cfgrepo/repo" -c user.name=validate -c user.email=validate@local add -A
+git -C "$cfgrepo/repo" -c user.name=validate -c user.email=validate@local commit -qm marker
+# The mounted repo is owned by the host uid, not the container's 1000, and
+# git refuses local clones from "dubiously owned" repos. safe.directory is
+# only honored from PROTECTED config (system/global files — env and -c are
+# deliberately ignored), so ship it as a read-only XDG global config.
+mkdir -p "$cfgrepo/xdg/git"
+printf '[safe]\n\tdirectory = *\n' > "$cfgrepo/xdg/git/config"
 
 fail() { echo "FAIL: $1" >&2; rc=1; }
 
@@ -99,12 +105,11 @@ fi
 
 echo "== 3. functional: CRIBL_FIPS=0 single instance (+ remote config from git)"
 docker rm -f "$c3" >/dev/null 2>&1 || true
-# GIT_CONFIG_*: the mounted repo is owned by the host uid, not the
-# container's uid 1000 — modern git refuses local clones from "dubiously
-# owned" repos. Harness-only relaxation; real https/ssh clones are unaffected.
+# XDG_CONFIG_HOME points git at the mounted safe.directory override
+# (harness-only; real https/ssh clones never hit the ownership check).
 docker run -d --name "$c3" -e CRIBL_FIPS=0 -e CRIBL_ADMIN_PASSWORD='Va1idate!Pw' \
-  -v "$cfgrepo":/cfgsrc:ro -e CRIBL_CONFIG_GIT_URL=file:///cfgsrc \
-  -e GIT_CONFIG_COUNT=1 -e GIT_CONFIG_KEY_0=safe.directory -e GIT_CONFIG_VALUE_0='*' \
+  -v "$cfgrepo":/cfgsrc:ro -e CRIBL_CONFIG_GIT_URL=file:///cfgsrc/repo \
+  -e XDG_CONFIG_HOME=/cfgsrc/xdg \
   "$image" >/dev/null
 if ! wait_health "$c3" "$BOOT_WAIT"; then
   fail "health probe (non-FIPS single) — last 40 log lines:"
