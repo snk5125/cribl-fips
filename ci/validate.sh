@@ -99,8 +99,13 @@ fi
 
 echo "== 3. functional: CRIBL_FIPS=0 single instance (+ remote config from git)"
 docker rm -f "$c3" >/dev/null 2>&1 || true
+# GIT_CONFIG_*: the mounted repo is owned by the host uid, not the
+# container's uid 1000 — modern git refuses local clones from "dubiously
+# owned" repos. Harness-only relaxation; real https/ssh clones are unaffected.
 docker run -d --name "$c3" -e CRIBL_FIPS=0 -e CRIBL_ADMIN_PASSWORD='Va1idate!Pw' \
-  -v "$cfgrepo":/cfgsrc:ro -e CRIBL_CONFIG_GIT_URL=file:///cfgsrc "$image" >/dev/null
+  -v "$cfgrepo":/cfgsrc:ro -e CRIBL_CONFIG_GIT_URL=file:///cfgsrc \
+  -e GIT_CONFIG_COUNT=1 -e GIT_CONFIG_KEY_0=safe.directory -e GIT_CONFIG_VALUE_0='*' \
+  "$image" >/dev/null
 if ! wait_health "$c3" "$BOOT_WAIT"; then
   fail "health probe (non-FIPS single) — last 40 log lines:"
   docker logs "$c3" 2>&1 | tail -40 >&2
