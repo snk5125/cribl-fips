@@ -56,6 +56,54 @@ if [ -n "${CRIBL_LICENSE:-}" ] && [ ! -f "$licenses_yml" ]; then
   printf 'licenses:\n  - %s\n' "$CRIBL_LICENSE" > "$licenses_yml"
 fi
 
+# --- deployment config overlays, least- to most-specific -------------------
+# 1. baked defaults (image)  2. remote fetch (git or https tarball)
+# 3. /opt/cribl-seed mount   — later layers win. Fetch failures abort boot
+# (fail closed: never run with half-applied config).
+#
+#   CRIBL_CONFIG_GIT_URL   git remote holding the config tree (https or ssh;
+#                          git-core + openssh-clients are in the image)
+#   CRIBL_CONFIG_GIT_REF   optional branch/tag for the clone
+#   CRIBL_CONFIG_URL       .tgz over https — presigned S3 URLs work
+#   CRIBL_CONFIG_SHA256    optional integrity pin for the tarball
+#   CRIBL_CONFIG_PATH      subdir inside the repo/tarball that holds the
+#                          local/cribl tree (default: root)
+if [ -n "${CRIBL_CONFIG_GIT_URL:-}" ] && [ -n "${CRIBL_CONFIG_URL:-}" ]; then
+  echo "ERROR: set only one of CRIBL_CONFIG_GIT_URL / CRIBL_CONFIG_URL" >&2
+  exit 1
+fi
+fetch_dir=""
+if [ -n "${CRIBL_CONFIG_GIT_URL:-}" ]; then
+  echo "== fetching config from git: $CRIBL_CONFIG_GIT_URL (${CRIBL_CONFIG_GIT_REF:-default branch})"
+  fetch_dir="$(mktemp -d)"
+  git clone --quiet --depth 1 \
+    ${CRIBL_CONFIG_GIT_REF:+--branch "$CRIBL_CONFIG_GIT_REF"} \
+    "$CRIBL_CONFIG_GIT_URL" "$fetch_dir/src"
+elif [ -n "${CRIBL_CONFIG_URL:-}" ]; then
+  echo "== fetching config tarball: $CRIBL_CONFIG_URL"
+  fetch_dir="$(mktemp -d)"
+  curl -fsSL --retry 3 -o "$fetch_dir/config.tgz" "$CRIBL_CONFIG_URL"
+  if [ -n "${CRIBL_CONFIG_SHA256:-}" ]; then
+    echo "$CRIBL_CONFIG_SHA256  $fetch_dir/config.tgz" | sha256sum -c --quiet \
+      || { echo "ERROR: CRIBL_CONFIG_URL tarball failed sha256 pin" >&2; exit 1; }
+  fi
+  mkdir -p "$fetch_dir/src"
+  tar -xzf "$fetch_dir/config.tgz" -C "$fetch_dir/src"
+fi
+if [ -n "$fetch_dir" ]; then
+  src="$fetch_dir/src/${CRIBL_CONFIG_PATH:-.}"
+  if [ ! -d "$src" ]; then
+    echo "ERROR: CRIBL_CONFIG_PATH '$CRIBL_CONFIG_PATH' not found in fetched config" >&2
+    exit 1
+  fi
+  echo "== overlaying fetched config onto local/cribl/"
+  mkdir -p "$CRIBL_HOME/local/cribl"
+  cp -r "$src/." "$CRIBL_HOME/local/cribl/"
+  rm -rf "$fetch_dir"
+  # keep the fetched .git out of cribl's own config-versioning repo
+  rm -rf "$CRIBL_HOME/local/cribl/.git"
+fi
+
 # Overlay deployment config (real outputs/routes) over the baked defaults.
 if [ -d /opt/cribl-seed ] && [ -n "$(ls -A /opt/cribl-seed 2>/dev/null)" ]; then
   echo "== seeding config from /opt/cribl-seed/"

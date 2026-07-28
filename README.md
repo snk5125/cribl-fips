@@ -82,13 +82,27 @@ docker exec <container> sh -c \
 
 ## Configuration
 
+All knobs are env vars — copy [.env.example](.env.example) to `.env` for
+compose (or use `docker run --env-file`). Host port mappings
+(`CRIBL_UI_PORT` / `CRIBL_HTTP_PORT` / `CRIBL_OTLP_PORT`) are compose-level.
+
 The baked config tree (`config/local/cribl/`) keeps the image dependency-free:
 `http_in` (:8080, NDJSON breaker `Cribl`) and `otlp_in` (:4318) route through
-a passthrough pipeline to a `devnull` output. Overlay real outputs/routes by
-mounting a tree at `/opt/cribl-seed/` (entrypoint copies it onto
-`/opt/cribl/local/cribl/` at boot). Note: in distributed mode — the only
-FIPS-capable topology — worker-group config is managed by the leader, not by
-the baked tree.
+a passthrough pipeline to a `devnull` output. Real pipelines/routes/outputs
+overlay it, least- to most-specific (a fetch failure aborts boot — the image
+never runs with half-applied config):
+
+1. **Baked defaults** (this image)
+2. **Remote fetch** — `CRIBL_CONFIG_GIT_URL` (+`CRIBL_CONFIG_GIT_REF`) clones
+   a git repo (https or ssh), or `CRIBL_CONFIG_URL` pulls a `.tgz` over
+   https (presigned S3 URLs work; pin with `CRIBL_CONFIG_SHA256`).
+   `CRIBL_CONFIG_PATH` selects a subdirectory of the repo/tarball holding
+   the `local/cribl` tree.
+3. **Local mount** at `/opt/cribl-seed/` (wins last)
+
+Note: in distributed mode — the only FIPS-capable topology — worker-group
+config is managed by the leader; the overlays above configure the node they
+run on (dev single instance, or leader bootstrap).
 
 ## Limitations & compliance caveats
 

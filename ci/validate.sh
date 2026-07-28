@@ -28,10 +28,22 @@ rc=0
 
 c1="aggfips-val-fc-$$"    # fail-closed single
 c2="aggfips-val-rbac-$$"  # fail-closed leader (RBAC refusal)
-c3="aggfips-val-fn-$$"    # functional non-FIPS
+c3="aggfips-val-fn-$$"    # functional non-FIPS + remote-config overlay
 c4="aggfips-val-fips-$$"  # licensed positive
-cleanup() { docker rm -f "$c1" "$c2" "$c3" "$c4" >/dev/null 2>&1 || true; }
+cfgrepo="$(mktemp -d)"    # throwaway git repo exercising CRIBL_CONFIG_GIT_URL
+cleanup() {
+  docker rm -f "$c1" "$c2" "$c3" "$c4" >/dev/null 2>&1 || true
+  rm -rf "$cfgrepo"
+}
 trap cleanup EXIT
+
+# Marker config tree served over git file:// (mounted read-only) — proves the
+# fetch + overlay path end-to-end without network infrastructure.
+mkdir -p "$cfgrepo/pipelines/remote_marker"
+printf 'functions: []\ngroups: {}\n' > "$cfgrepo/pipelines/remote_marker/conf.yml"
+git -C "$cfgrepo" init -q -b main
+git -C "$cfgrepo" -c user.name=validate -c user.email=validate@local add -A
+git -C "$cfgrepo" -c user.name=validate -c user.email=validate@local commit -qm marker
 
 fail() { echo "FAIL: $1" >&2; rc=1; }
 
@@ -85,9 +97,10 @@ else
   fi
 fi
 
-echo "== 3. functional: CRIBL_FIPS=0 single instance"
+echo "== 3. functional: CRIBL_FIPS=0 single instance (+ remote config from git)"
 docker rm -f "$c3" >/dev/null 2>&1 || true
-docker run -d --name "$c3" -e CRIBL_FIPS=0 -e CRIBL_ADMIN_PASSWORD='Va1idate!Pw' "$image" >/dev/null
+docker run -d --name "$c3" -e CRIBL_FIPS=0 -e CRIBL_ADMIN_PASSWORD='Va1idate!Pw' \
+  -v "$cfgrepo":/cfgsrc:ro -e CRIBL_CONFIG_GIT_URL=file:///cfgsrc "$image" >/dev/null
 if ! wait_health "$c3" "$BOOT_WAIT"; then
   fail "health probe (non-FIPS single) — last 40 log lines:"
   docker logs "$c3" 2>&1 | tail -40 >&2
@@ -113,6 +126,10 @@ else
     || fail "state/nodejs.cnf missing or not referencing fips_local.cnf"
   # --- non-root ---
   [ "$(docker exec "$c3" id -u)" = "1000" ] || fail "container not running as uid 1000"
+  # --- remote config overlay landed (and .git kept out of local/cribl) ---
+  docker exec "$c3" sh -c \
+      'test -f /opt/cribl/local/cribl/pipelines/remote_marker/conf.yml && test ! -d /opt/cribl/local/cribl/.git' \
+    || fail "remote config (CRIBL_CONFIG_GIT_URL) not overlaid onto local/cribl"
   # --- config schema rejections (signature grep from validate-cribl.sh) ---
   if docker exec "$c3" sh -c \
       'grep -hE "should (be|have)|rulesets need creating|invalid config" /opt/cribl/log/cribl.log /opt/cribl/log/worker/*/cribl.log 2>/dev/null' \
