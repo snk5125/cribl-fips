@@ -50,6 +50,10 @@ git -C "$cfgrepo/repo" -c user.name=validate -c user.email=validate@local commit
 # deliberately ignored), so ship it as a read-only XDG global config.
 mkdir -p "$cfgrepo/xdg/git"
 printf '[safe]\n\tdirectory = *\n' > "$cfgrepo/xdg/git/config"
+# mktemp dirs are mode 700 owned by the host uid — the container's uid 1000
+# cannot even traverse the mount without this (masked on macOS by Docker
+# Desktop's file sharing; hard EACCES on Linux runners).
+chmod -R a+rX "$cfgrepo"
 
 fail() { echo "FAIL: $1" >&2; rc=1; }
 
