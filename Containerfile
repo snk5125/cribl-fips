@@ -9,7 +9,7 @@
 # ci/fetch-cribl.sh; ci/build.sh supplies CRIBL_ARCH (x64|arm64) and, for
 # arm64 dev builds, overrides BASE_IMAGE with a locally-built base (the
 # published pin is amd64).
-ARG BASE_IMAGE=ghcr.io/snk5125/cribl-fips/ubi9-patched:2026-08-31@sha256:05aac6b70284c149b70832cf466fa86e72a66d785c458fdeccda0964dfe2f871
+ARG BASE_IMAGE=ghcr.io/snk5125/cribl-fips/ubi9-patched:2026-09-07@sha256:30b5ff3e402805e5880cc1fa76a6b3306ae049750d31bf3a0e433c8be01d524d
 
 # --- unpack stage: keeps the 85MB vendor tarball blob out of the shipped
 # image's layer history (tar itself is in the base — see docs/packages.md) ---
